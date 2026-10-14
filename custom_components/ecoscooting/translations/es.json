@@ -1,0 +1,148 @@
+{
+  "title": "Ecoscooting",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configurar Ecoscooting",
+        "description": "El seguimiento de Ecoscooting no necesita cuenta ni código postal: el hub se crea de inmediato. Después puedes añadir paquetes desde las opciones de la integración o con el servicio `ecoscooting.track_parcel`."
+      }
+    },
+    "abort": {
+      "already_configured": "Ecoscooting ya está configurado."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opciones de Ecoscooting",
+        "menu_options": {
+          "parcels": "Paquetes",
+          "settings": "Ajustes"
+        },
+        "sections": {
+          "parcels": {
+            "name": "Paquetes",
+            "data": {
+              "add": "Añadir un paquete",
+              "remove": "Eliminar paquetes"
+            },
+            "data_description": {
+              "add": "Introduce una referencia de Ecoscooting para empezar a seguirla. La encuentras en la confirmación de envío, en la página del pedido de la tienda o en el aviso de entrega."
+            }
+          },
+          "delivered": {
+            "name": "Paquetes entregados",
+            "data": {
+              "delivered_filter_type": "Filtrar por",
+              "delivered_filter_amount": "Cantidad"
+            },
+            "data_description": {
+              "delivered_filter_type": "Muestra los paquetes entregados en los últimos X días, o limita a los X más recientes.",
+              "delivered_filter_amount": "Número de días o paquetes a mostrar."
+            }
+          },
+          "history": {
+            "name": "Historial de paquetes",
+            "data": {
+              "include_history": "Incluir historial de estados"
+            },
+            "data_description": {
+              "include_history": "Añade un atributo de historial por paquete con cada actualización de estado (marca de tiempo, estado, texto original). Desactivado por defecto."
+            }
+          }
+        }
+      },
+      "parcels": {
+        "title": "Gestionar paquetes",
+        "data": {
+          "tracking_codes": "Códigos de seguimiento"
+        }
+      },
+      "settings": {
+        "title": "Ajustes",
+        "data": {
+          "delivered_filter_type": "Paquetes entregados: filtrar por",
+          "delivered_filter_amount": "Paquetes entregados: cantidad",
+          "include_history": "Incluir historial de estado"
+        }
+      }
+    },
+    "error": {
+      "invalid_tracking_code": "Eso no parece una referencia de Ecoscooting.",
+      "already_tracked": "Ese paquete ya se está rastreando."
+    }
+  },
+  "selector": {
+    "delivered_filter_type": {
+      "options": {
+        "days": "Días",
+        "parcels": "Número de paquetes"
+      }
+    }
+  },
+  "services": {
+    "track_parcel": {
+      "name": "Rastrear paquete",
+      "description": "Empieza a seguir un paquete con su referencia de Ecoscooting.",
+      "fields": {
+        "tracking_code": {
+          "name": "Código de seguimiento",
+          "description": "La referencia de Ecoscooting."
+        }
+      }
+    },
+    "untrack_parcel": {
+      "name": "Dejar de rastrear paquete",
+      "description": "Deja de seguir un paquete con su referencia de Ecoscooting.",
+      "fields": {
+        "tracking_code": {
+          "name": "Código de seguimiento",
+          "description": "La referencia de Ecoscooting que se deja de seguir."
+        }
+      }
+    }
+  },
+  "device_automation": {
+    "trigger_type": {
+      "parcel_registered": "Se ha registrado un paquete",
+      "parcel_status_changed": "El estado de un paquete ha cambiado",
+      "parcel_delivered": "Se ha entregado un paquete",
+      "parcel_delivery_time_changed": "La hora de entrega prevista de un paquete ha cambiado"
+    }
+  },
+  "entity": {
+    "button": {
+      "refresh": {
+        "name": "Actualizar"
+      }
+    },
+    "calendar": {
+      "deliveries": {
+        "name": "Entregas"
+      }
+    },
+    "sensor": {
+      "incoming_parcels": {
+        "name": "Paquetes entrantes",
+        "unit_of_measurement": "paquetes"
+      },
+      "next_delivery": {
+        "name": "Próxima entrega"
+      },
+      "awaiting_pickup": {
+        "name": "Listo para recoger",
+        "unit_of_measurement": "paquetes"
+      },
+      "delivered_parcels": {
+        "name": "Paquetes entregados",
+        "unit_of_measurement": "paquetes"
+      },
+      "last_update": {
+        "name": "Última actualización correcta"
+      },
+      "parcel": {
+        "name": "Paquete {barcode}"
+      }
+    }
+  }
+}
