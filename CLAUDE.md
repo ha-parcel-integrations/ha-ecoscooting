@@ -108,7 +108,9 @@ the routing ids, the pickup-point block, the coordinates, the photo link,
 every timestamp — the derived delivery window included, since it says when a
 courier set out for this address — and the per-event offset, which narrows
 down a region. `raw` itself is never trimmed — privacy lives in the
-redaction list.
+redaction list. For the same reason a reference never reaches a log line
+either: `coordinator.py`'s `_log_key` logs a short digest of it, which is
+enough to match two lines about one parcel without naming it.
 
 **Troubleshooting a sudden, universal failure.** Every parcel for every user
 failing at once, with replies that are not the per-parcel not-found, is never

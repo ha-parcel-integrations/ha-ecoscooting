@@ -50,6 +50,16 @@ def _stagger_minutes(entry_id: str) -> int:
     return int(digest, 16) % STAGGER_MINUTES
 
 
+def _log_key(code: str) -> str:
+    """Return a stable, non-reversible stand-in for a tracking reference.
+
+    A reference embeds the destination postcode, and diagnostics redact it for
+    that reason — so it must not reach a log line either. The digest still
+    lets two lines about the same parcel be matched up.
+    """
+    return hashlib.sha256(code.encode()).hexdigest()[:8]
+
+
 def _in_quiet_window(moment: datetime) -> bool:
     """Whether ``moment`` (local time) falls in the no-polling window."""
     return QUIET_WINDOW_START_HOUR <= moment.hour < QUIET_WINDOW_END_HOUR
@@ -263,7 +273,11 @@ class EcoscootingCoordinator(DataUpdateCoordinator[list[dict]]):
                     saw_429 = True
                     if result.retry_after is not None:
                         retry_afters.append(result.retry_after)
-                _LOGGER.warning("Ecoscooting fetch failed for %s: %s", code, result)
+                _LOGGER.warning(
+                    "Ecoscooting fetch failed for parcel %s: %s",
+                    _log_key(code),
+                    result,
+                )
                 cached = self._raw_cache.get(code)
                 if cached is not None:
                     raws_by_code[code] = cached
