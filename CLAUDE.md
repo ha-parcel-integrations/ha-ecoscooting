@@ -49,6 +49,14 @@ you act in one of these areas:
 
 ## Carrier-specific notes
 
+- **Confirmed on real parcels (2026-10-17).** A sweep of seventeen references,
+  each followed from its first scan to its outcome, produced no unmapped
+  `actionCode` and no warning of any kind. It covered delivery to the door,
+  delivery at a pickup point (`PUDO_INBOUND` / `GTMS_PUDO_SIGNED`, with
+  `popStationParam` naming the point), a failed delivery and a return — and
+  every reference resolved, so the not-found branch stayed unexercised.
+  Weight arrives as grams in `packageParam.dimWeight`.
+
 Ecoscooting is a **code-based, account-less** carrier: one tracking reference
 per parcel, no second factor, no login. Everything below is an integration
 decision; the endpoint mechanics live in the private research notes.

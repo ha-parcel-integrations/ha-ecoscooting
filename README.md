@@ -198,7 +198,7 @@ All third-party trademarks, trade names, product names, logos, and other brand a
 
 This integration may rely on public, unofficial, or undocumented carrier interfaces, accessed with your own account or API key where required. These may change or be withdrawn without notice and may be subject to Ecoscooting's terms. Data is sent only to Ecoscooting's own services or those of its group; this project operates no servers of its own. You are responsible for ensuring that your use complies with applicable law and those terms. Use is at your own risk; see the [licence](LICENSE) for warranty limitations.
 
-This integration uses the same public tracking endpoint as the Ecoscooting consumer website. It is **pre-1.0**: the delivery, pickup-point, failed-delivery and return paths are mapped from real parcels, but any status Ecoscooting reports that this integration does not know yet is logged with a link to report it.
+This integration uses the same public tracking endpoint as the Ecoscooting consumer website. The delivery, pickup-point, failed-delivery and return paths are all confirmed against real parcels; any status Ecoscooting reports that this integration does not know yet is logged with a link to report it.
 
 ## Contributing
 
