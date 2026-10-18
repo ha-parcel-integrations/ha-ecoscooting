@@ -43,7 +43,7 @@ Part of the [ha-parcel-integrations](https://ha-parcel-integrations.github.io/) 
 
 ## Requirements
 
-- Home Assistant 2024.12 or newer
+- Home Assistant 2025.12 or newer
 - An Ecoscooting parcel and its tracking reference (from the shipping
   confirmation email, the webshop's order page or the missed-delivery card) —
   no account needed. Both reference formats Ecoscooting uses work: an
