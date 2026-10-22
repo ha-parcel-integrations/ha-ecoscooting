@@ -256,7 +256,10 @@ def build_history(
             or action_code,
         }
         # Every timestamp here came out of to_iso_timestamp, so it parses.
-        entries.append((parse_iso(timestamp), entry))
+        parsed = parse_iso(timestamp)
+        if parsed is None:
+            continue
+        entries.append((parsed, entry))
     entries.sort(key=lambda item: item[0])
     return [entry for _, entry in entries][-max_events:]
 
