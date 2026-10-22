@@ -1,4 +1,5 @@
 """Tests for the Ecoscooting refresh button."""
+
 from unittest.mock import AsyncMock, MagicMock
 
 from custom_components.ecoscooting.button import EcoscootingRefreshButton

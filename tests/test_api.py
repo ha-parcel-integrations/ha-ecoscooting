@@ -1,26 +1,19 @@
 """Tests for the Ecoscooting API client."""
+
 import json
 from unittest.mock import AsyncMock, MagicMock
 
 import aiohttp
 import pytest
 
-from custom_components.ecoscooting.api import (
-    EcoscootingApiClient,
-    EcoscootingApiError,
-)
+from custom_components.ecoscooting.api import EcoscootingApiClient, EcoscootingApiError
 from custom_components.ecoscooting.const import (
     REQUEST_MSG_TYPE,
     REQUEST_TO_CODE,
     TRACKING_API_URL,
 )
 
-from .payloads import (
-    DELIVERED_CODE,
-    QUERY_ERROR,
-    XML_ERROR,
-    delivered_sample,
-)
+from .payloads import DELIVERED_CODE, QUERY_ERROR, XML_ERROR, delivered_sample
 
 CODE = DELIVERED_CODE
 

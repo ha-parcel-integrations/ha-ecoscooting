@@ -1,14 +1,16 @@
 """pytest configuration for the Ecoscooting test suite."""
+
 import sys
 
 import pytest
 from pytest_homeassistant_custom_component.plugins import hass  # noqa: F401
 
+from custom_components.ecoscooting import api, parcels
+
 
 @pytest.fixture(autouse=True)
 def auto_enable_custom_integrations(enable_custom_integrations):
     """Make ``custom_components.ecoscooting`` loadable from config-flow / setup tests."""
-    yield
 
 
 @pytest.fixture(autouse=True)
@@ -19,12 +21,9 @@ def reset_one_shot_warnings():
     one-shot-warning assertion would depend on which test already triggered
     that status code, envelope or payload shape first.
     """
-    from custom_components.ecoscooting import api, parcels
-
     parcels._unmapped_statuses_logged.clear()
     parcels._shapes_warned.clear()
     api._envelopes_warned.clear()
-    yield
 
 
 if sys.platform == "win32":
@@ -44,7 +43,7 @@ if sys.platform == "win32":
     # HA's aiohttp helper hardcodes aiohttp's AsyncResolver, whose aiodns
     # backend refuses the Proactor loop the suite runs on under Windows.
     # Swap in the threaded resolver for the tests — no test resolves DNS.
-    import homeassistant.helpers.aiohttp_client as _ha_aiohttp_client
     from aiohttp.resolver import ThreadedResolver
+    import homeassistant.helpers.aiohttp_client as _ha_aiohttp_client
 
     _ha_aiohttp_client.AsyncResolver = ThreadedResolver

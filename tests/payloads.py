@@ -7,6 +7,7 @@ shop. Keep the samples in this one module rather than inline in each test —
 when the payload shape turns out to differ from what we assumed, there is
 then exactly one place to fix.
 """
+
 from __future__ import annotations
 
 ACTIVE_CODE = "CNPRT00000000000000000001"
@@ -38,7 +39,9 @@ def event(
     extra: dict | None = None,
 ) -> dict:
     """One entry of the gateway's own ``statuses`` list."""
-    offset = f"+{timezone_hours}" if not timezone_hours.startswith("-") else timezone_hours
+    offset = (
+        f"+{timezone_hours}" if not timezone_hours.startswith("-") else timezone_hours
+    )
     return {
         "datetime": f"2026-10-09 12:00:00 UTC{offset}",
         "opTimestamp": op_timestamp,

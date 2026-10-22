@@ -1,4 +1,5 @@
 """Tests for Ecoscooting device triggers."""
+
 from unittest.mock import AsyncMock
 
 from custom_components.ecoscooting.const import DOMAIN

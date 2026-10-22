@@ -1,10 +1,9 @@
 """Tests for Ecoscooting diagnostics."""
+
 from datetime import timedelta
 from unittest.mock import MagicMock
 
-from custom_components.ecoscooting.diagnostics import (
-    async_get_config_entry_diagnostics,
-)
+from custom_components.ecoscooting.diagnostics import async_get_config_entry_diagnostics
 from custom_components.ecoscooting.parcels import normalize_parcel
 
 from .payloads import DELIVERED_CODE, delivered_sample, pickup_sample

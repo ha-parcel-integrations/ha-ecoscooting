@@ -4,7 +4,8 @@ These need no Home Assistant instance — the whole point of keeping
 ``parcels.py`` free of I/O is that the carrier-specific mapping (the part you
 rewrite per carrier) can be tested as plain functions.
 """
-from datetime import datetime, timedelta, timezone
+
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -48,7 +49,7 @@ from .payloads import (
 
 
 @pytest.mark.parametrize(
-    "code,expected",
+    ("code", "expected"),
     [
         # Seen on the wire, both code families.
         ("CREATE_ORDER_CES", ParcelStatus.REGISTERED),
@@ -96,7 +97,7 @@ def test_map_parcel_status_known(code, expected):
     ],
 )
 def test_delivered_to_the_shop_is_not_delivered(code):
-    """"Delivered to PUDO" is the shop signing for it, not the recipient."""
+    """ "Delivered to PUDO" is the shop signing for it, not the recipient."""
     assert map_parcel_status(code) == ParcelStatus.AT_PICKUP_POINT
 
 
@@ -146,9 +147,7 @@ def test_map_parcel_status_unmapped_falls_back_to_newest_mappable_event():
 
 def test_map_parcel_status_unmapped_without_usable_history_is_unknown():
     assert map_parcel_status("LM_SOMETHING_NEW", []) == ParcelStatus.UNKNOWN
-    assert (
-        map_parcel_status("LM_SOMETHING_NEW", ["not-a-dict"]) == ParcelStatus.UNKNOWN
-    )
+    assert map_parcel_status("LM_SOMETHING_NEW", ["not-a-dict"]) == ParcelStatus.UNKNOWN
 
 
 def test_map_event_status_missing_and_unmapped_are_none():
@@ -185,7 +184,7 @@ def test_unmapped_status_warning_carries_no_payload_values(caplog):
 def test_parse_iso_handles_z_naive_and_garbage():
     assert parse_iso("2026-04-29T13:12:42Z").tzinfo is not None
     # A naive value is assumed UTC so mixed lists still sort.
-    assert parse_iso("2026-04-29T13:12:42").tzinfo == timezone.utc
+    assert parse_iso("2026-04-29T13:12:42").tzinfo == UTC
     assert parse_iso("not-a-date") is None
     assert parse_iso(None) is None
 
@@ -337,7 +336,9 @@ def test_out_for_delivery_spans_the_rest_of_the_delivery_day():
 
 def test_an_envelope_that_is_not_an_object_warns_instead_of_crashing(caplog):
     """Normalisation runs outside the per-parcel error handling: a raise kills the poll."""
-    parcel = normalize_parcel({"packageParam": "x", "statuses": "y", "trackingNumber": "A"})
+    parcel = normalize_parcel(
+        {"packageParam": "x", "statuses": "y", "trackingNumber": "A"}
+    )
     assert parcel["barcode"] == "A"
     assert parcel["status"] == ParcelStatus.UNKNOWN
     assert parcel["weight"] is None
@@ -406,9 +407,7 @@ def test_normalize_delivered_parcel():
     assert parcel["raw_status"] == "Delivery Success"
     assert parcel["delivered"] is True
     assert parcel["delivered_at"] == "2026-10-09T19:35:06+00:00"
-    assert parcel["url"] == (
-        f"https://www.ecoscooting.com/tracking/{DELIVERED_CODE}"
-    )
+    assert parcel["url"] == (f"https://www.ecoscooting.com/tracking/{DELIVERED_CODE}")
     assert parcel["history"] is None  # opt-in, default off
 
 
@@ -524,9 +523,7 @@ def test_normalize_dates_a_delivery_from_the_delivery_event_only():
     """A status reached by history fallback must not borrow the newest
     event's instant for ``delivered_at``."""
     raw = delivered_sample()
-    raw["statuses"].insert(
-        0, event("GTMS_SOMETHING_NEW", "1791999999000", "?")
-    )
+    raw["statuses"].insert(0, event("GTMS_SOMETHING_NEW", "1791999999000", "?"))
     parcel = normalize_parcel(raw)
     assert parcel["status"] == ParcelStatus.DELIVERED
     assert parcel["delivered_at"] == "2026-10-09T19:35:06+00:00"
@@ -560,9 +557,7 @@ def test_normalize_ignores_a_non_object_event():
 def test_normalize_falls_back_through_label_then_code():
     raw = active_sample()
     raw["statuses"][0]["statusName"] = ""
-    assert normalize_parcel(raw)["raw_status"] == (
-        "Your shipment is out for delivery"
-    )
+    assert normalize_parcel(raw)["raw_status"] == ("Your shipment is out for delivery")
     raw["statuses"][0]["description"] = ""
     assert normalize_parcel(raw)["raw_status"] == "LM_DELIVERY_DEPART"
 
@@ -621,7 +616,7 @@ def _entry(filter_type: str, amount: int) -> MockConfigEntry:
 
 
 def _delivered_pair() -> list[dict]:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return [
         {"barcode": "RECENT", "delivered_at": (now - timedelta(days=1)).isoformat()},
         {"barcode": "OLD", "delivered_at": (now - timedelta(days=30)).isoformat()},
