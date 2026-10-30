@@ -184,7 +184,7 @@ logger:
 
 - **A parcel shows `unknown`** — Ecoscooting has not scanned it yet, or the reference is wrong. Its tracking answers the same "not found" either way, so the two cannot be told apart; a valid reference picks up automatically once scanned.
 - **Every parcel stops updating at once, for everyone** — this is not something a setting can fix. Please [open an issue](https://github.com/ha-parcel-integrations/ha-ecoscooting/issues/new); it needs a code change.
-- **A status logs "Unrecognised Ecoscooting status"** — please [open an issue](https://github.com/ha-parcel-integrations/ha-ecoscooting/issues/new) with the logged line so the mapping can be extended.
+- **A status logs "Unrecognised Ecoscooting status"** — please [open an issue](https://github.com/ha-parcel-integrations/ha-ecoscooting/issues/new?template=unrecognised_status.yml) with the logged line so the mapping can be extended.
 
 ## Related integrations
 
