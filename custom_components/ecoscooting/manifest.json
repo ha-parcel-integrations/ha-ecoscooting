@@ -1,6 +1,7 @@
 {
   "domain": "ecoscooting",
   "name": "Ecoscooting",
+  "categories": ["productivity_information"],
   "codeowners": [
     "@peter-mdf"
   ],
