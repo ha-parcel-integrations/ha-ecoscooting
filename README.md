@@ -117,6 +117,7 @@ Standard HA removal applies: **Settings → Devices & Services → Ecoscooting �
 | `sensor.ecoscooting_incoming_parcels` | Number of active tracked parcels, full list under the `parcels` attribute |
 | `sensor.ecoscooting_parcel_<code>` | One per tracked parcel; state is the canonical status, attributes carry the full normalised parcel |
 | `sensor.ecoscooting_next_delivery` | Earliest expected delivery moment across all active parcels. Ecoscooting publishes no expected delivery time, so this fills only while a parcel is out for delivery — the day it is on the van |
+| `sensor.ecoscooting_en_route_to_pickup_point` | Parcels on their way to a pickup point that have not arrived yet |
 | `sensor.ecoscooting_awaiting_pickup` | Parcels waiting for you at a pickup point |
 | `sensor.ecoscooting_delivered_parcels` | Recently delivered parcels (see the retention option) |
 | `sensor.ecoscooting_last_successful_update` | Diagnostic: when Ecoscooting was last polled successfully |

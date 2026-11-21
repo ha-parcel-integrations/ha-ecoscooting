@@ -7,6 +7,7 @@ from custom_components.ecoscooting.const import ParcelStatus
 from custom_components.ecoscooting.sensor import (
     EcoscootingAwaitingPickupSensor,
     EcoscootingDeliveredParcelsSensor,
+    EcoscootingEnRouteToPickupPointSensor,
     EcoscootingIncomingParcelsSensor,
     EcoscootingLastUpdateSensor,
     EcoscootingNextDeliverySensor,
@@ -69,12 +70,12 @@ def test_parcel_sensor_missing_barcode():
 def test_next_delivery_picks_earliest():
     coordinator = _coordinator(
         [
-            _parcel("A", planned_from="2026-05-02T10:00:00Z"),
-            _parcel("B", planned_from="2026-05-01T10:00:00Z"),
+            _parcel("A", planned_from="2099-05-02T10:00:00Z"),
+            _parcel("B", planned_from="2099-05-01T10:00:00Z"),
         ]
     )
     sensor = EcoscootingNextDeliverySensor(coordinator, _entry())
-    assert sensor.native_value == datetime(2026, 5, 1, 10, 0, tzinfo=UTC)
+    assert sensor.native_value == datetime(2099, 5, 1, 10, 0, tzinfo=UTC)
     assert sensor.extra_state_attributes["barcode"] == "B"
 
 
@@ -88,7 +89,7 @@ def test_next_delivery_skips_unparseable_moment():
     coordinator = _coordinator(
         [
             _parcel("A", planned_from="not-a-date"),
-            _parcel("B", planned_from="2026-05-01T10:00:00Z"),
+            _parcel("B", planned_from="2099-05-01T10:00:00Z"),
         ]
     )
     sensor = EcoscootingNextDeliverySensor(coordinator, _entry())
@@ -106,6 +107,39 @@ def test_awaiting_pickup_counts_only_parcels_at_the_point():
         "READY"
     ]
     assert awaiting.native_value == 1
+
+
+def test_en_route_and_awaiting_pickup_split():
+    parcels = [
+        _parcel("EN_ROUTE", pickup=True),
+        _parcel("READY", pickup=True, status=ParcelStatus.AT_PICKUP_POINT),
+        _parcel("BACK", pickup=True, status=ParcelStatus.RETURNING),
+        _parcel("HOME"),
+    ]
+    en_route = EcoscootingEnRouteToPickupPointSensor(_coordinator(parcels), _entry())
+    awaiting = EcoscootingAwaitingPickupSensor(_coordinator(parcels), _entry())
+    assert en_route.unique_id == "e1_en_route_to_pickup_point"
+    assert [p["barcode"] for p in en_route.extra_state_attributes["parcels"]] == [
+        "EN_ROUTE"
+    ]
+    assert [p["barcode"] for p in awaiting.extra_state_attributes["parcels"]] == [
+        "READY"
+    ]
+    assert en_route.native_value == 1
+    assert awaiting.native_value == 1
+
+
+def test_next_delivery_skips_a_window_that_has_ended():
+    sensor = EcoscootingNextDeliverySensor(
+        _coordinator(
+            [
+                _parcel("OLD", planned_from="2000-01-01T10:00:00Z"),
+                _parcel("NEW", planned_from="2099-05-01T10:00:00Z"),
+            ]
+        ),
+        _entry(),
+    )
+    assert sensor.native_value == datetime(2099, 5, 1, 10, 0, tzinfo=UTC)
 
 
 def test_pickup_sensor_zero_without_data():

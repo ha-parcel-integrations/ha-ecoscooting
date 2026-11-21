@@ -13,11 +13,13 @@ machinery are suite-wide and should be left alone.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta, timezone
+from collections.abc import Iterable
+from datetime import UTC, date, datetime, time, timedelta, timezone, tzinfo
 import logging
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.util import dt as dt_util
 
 from .const import (
     CONF_DELIVERED_FILTER_AMOUNT,
@@ -271,6 +273,108 @@ def tracking_url(tracking_code: str | None) -> str | None:
     return TRACKING_URL.format(tracking_code=tracking_code)
 
 
+def _moment(value: Any, zone: tzinfo) -> tuple[datetime, bool, str] | None:
+    """Return ``(aware datetime, date_only, text)`` for a carrier time, or ``None``.
+
+    A naive time or a bare date gets ``zone``; an aware time keeps its offset
+    and, when it came in as a string, its own spelling.
+    """
+    if isinstance(value, datetime):
+        parsed = value
+    elif isinstance(value, date):
+        moment = datetime.combine(value, time.min, tzinfo=zone)
+        return moment, True, moment.isoformat()
+    elif isinstance(value, str) and value:
+        try:
+            if len(value) == 10:
+                moment = datetime.combine(
+                    date.fromisoformat(value), time.min, tzinfo=zone
+                )
+                return moment, True, moment.isoformat()
+            parsed = datetime.fromisoformat(value)
+        except ValueError:
+            return None
+        if parsed.tzinfo:
+            return parsed, False, value
+    else:
+        return None
+    moment = parsed if parsed.tzinfo else parsed.replace(tzinfo=zone)
+    return moment, False, moment.isoformat()
+
+
+def _end_of_day(moment: datetime, zone: tzinfo) -> datetime:
+    local = moment.astimezone(zone)
+    return datetime.combine(local.date(), time(23, 59, 59), tzinfo=zone)
+
+
+def planned_window(
+    start: Any, end: Any, *, zone: tzinfo
+) -> tuple[str | None, str | None]:
+    """Return ``(planned_from, planned_to)`` in the canonical window shape.
+
+    ``start`` and ``end`` are ISO strings, dates or datetimes, or ``None``; an
+    epoch number must be converted first (see ``to_iso_timestamp``). A window
+    keeps both ends. One moment with a time ends at ``23:59:59`` the same local
+    day; a date covers ``00:00:00`` to ``23:59:59``; two dates run from the
+    first day's start to the last day's end. Equal values are one moment,
+    reversed values are swapped, and ``planned_to`` is never set without
+    ``planned_from``. ``zone`` is the carrier's own zone: it dates naive times
+    and bare dates and decides which day a moment ends on, so a ``Z`` moment
+    still ends on the carrier's local day. When nothing is left of that day
+    after the moment, there is no ``planned_to``.
+    """
+    first = _moment(start, zone)
+    last = _moment(end, zone)
+    if first is None:
+        first, last = last, None
+    if first is None:
+        return None, None
+
+    def closing(moment: tuple[datetime, bool, str]) -> datetime:
+        return _end_of_day(moment[0], zone) if moment[1] else moment[0]
+
+    if last is not None and closing(last) < first[0]:
+        first, last = last, first
+    if last is not None and closing(last) == first[0]:
+        last = None
+
+    if last is None:
+        end_of_day = _end_of_day(first[0], zone)
+        return first[2], end_of_day.isoformat() if end_of_day > first[0] else None
+    return first[2], closing(last).isoformat() if last[1] else last[2]
+
+
+_NO_WINDOW_STATUSES = frozenset(
+    {ParcelStatus.AT_PICKUP_POINT, ParcelStatus.RETURNING, ParcelStatus.DELIVERED}
+)
+
+
+def planned_for_status(
+    status: ParcelStatus, planned_from: str | None, planned_to: str | None
+) -> tuple[str | None, str | None]:
+    """Empty the delivery window once the parcel is at its destination or done."""
+    if status in _NO_WINDOW_STATUSES:
+        return None, None
+    return planned_from, planned_to
+
+
+def is_pickup(
+    route_flag: bool | None,
+    status: ParcelStatus,
+    event_statuses: Iterable[ParcelStatus | None] = (),
+) -> bool:
+    """Whether the delivery route ends at a pickup point.
+
+    The carrier's own route flag wins; otherwise the parcel having reached
+    ``AT_PICKUP_POINT`` at any point counts, so the value survives collection.
+    """
+    if route_flag:
+        return True
+    return status is ParcelStatus.AT_PICKUP_POINT or any(
+        event is ParcelStatus.AT_PICKUP_POINT for event in event_statuses
+    )
+
+
 def _package(raw: dict) -> dict:
     """Return ``packageParam``, reporting a shape that is not an object.
 
@@ -297,31 +401,33 @@ def _events(raw: dict) -> list[dict]:
     return [event for event in statuses if isinstance(event, dict)]
 
 
-def _pickup_point(raw: dict) -> str | None:
-    """Return the pickup point's shop name and address, or ``None``.
+def _station(raw: dict) -> dict | None:
+    """Return the ``popStationParam`` block, or ``None`` when there is none.
 
-    The gateway sends a ``popStationParam`` block only for a parcel routed to
-    a pickup point, and keeps sending it after collection, so the parcel
-    still shows where it was collected. Its PIN, phone number and opening
-    hours are deliberately never read: the PIN is a collection credential and
-    the rest is noise on a parcel sensor. Address parts come through spelled
-    ``NaN`` where the carrier has no value, and are left out.
+    The gateway sends it only for a parcel routed to a pickup point, and keeps
+    sending it after collection, so its presence says where the route ends. A
+    block that is not an object is reported and ignored.
     """
     station = raw.get("popStationParam")
-    if not isinstance(station, dict):
-        if station is not None:
-            _warn_pickup_point_shape(type(station).__name__)
-        return None
-    if not station.get("stationName") and not station.get("detailAddress"):
+    if isinstance(station, dict):
+        return station or None
+    if station is not None:
+        _warn_pickup_point_shape(type(station).__name__)
+    return None
+
+
+def _pickup_point(station: dict) -> str | None:
+    """Return the pickup point's shop name, or ``None``.
+
+    The address, PIN, phone number and opening hours are deliberately never
+    read: the PIN is a collection credential and the rest is noise on a parcel
+    sensor. A name spelled ``NaN`` is the carrier having no value.
+    """
+    name = str(station.get("stationName") or "").strip()
+    if not name or name.upper() == "NAN":
         _warn_pickup_point_shape(",".join(sorted(station)))
         return None
-    parts = [
-        part.strip()
-        for value in (station.get("stationName"), station.get("detailAddress"))
-        for part in str(value or "").split(",")
-        if part.strip() and part.strip().upper() != "NAN"
-    ]
-    return ", ".join(parts) or None
+    return name
 
 
 def _weight_kg(raw: dict) -> float | None:
@@ -349,23 +455,17 @@ def _weight_kg(raw: dict) -> float | None:
     return round(grams / 1000, 3)
 
 
-def _end_of_delivery_day(event: dict) -> str | None:
-    """Return the end of the day an event happened in, in the courier's zone.
+def _delivery_zone(event: dict) -> tzinfo:
+    """Return the courier's zone for an event: its own display offset.
 
-    The round lasts until the end of that day, but "that day" is a local one
-    and the display offset varies per event, so it is read from the event
-    that opens the window rather than from the parcel. Without a usable
-    offset the window would span the wrong day, so it is left open instead.
+    The display offset varies per event, so it is read from the event that
+    opens the window rather than from the parcel. Without a usable offset the
+    parcel is placed in Home Assistant's zone.
     """
-    start = parse_iso(to_iso_timestamp(event.get("opTimestamp")))
-    if start is None:
-        return None
     try:
-        offset = timezone(timedelta(hours=int(str(event.get("timezone")).strip())))
+        return timezone(timedelta(hours=int(str(event.get("timezone")).strip())))
     except (TypeError, ValueError):
-        return None
-    local = start.astimezone(offset)
-    return local.replace(hour=23, minute=59, second=59, microsecond=0).isoformat()
+        return dt_util.get_default_time_zone()
 
 
 def normalize_parcel(raw: dict, *, include_history: bool = False) -> dict:
@@ -406,9 +506,20 @@ def normalize_parcel(raw: dict, *, include_history: bool = False) -> dict:
         # signal: it opens the window, and the end of its own day closes it.
         for event in events:
             if _lookup(event.get("actionCode")) is ParcelStatus.OUT_FOR_DELIVERY:
-                planned_from = to_iso_timestamp(event.get("opTimestamp"))
-                planned_to = _end_of_delivery_day(event)
+                planned_from, planned_to = planned_window(
+                    to_iso_timestamp(event.get("opTimestamp")),
+                    None,
+                    zone=_delivery_zone(event),
+                )
                 break
+    planned_from, planned_to = planned_for_status(status, planned_from, planned_to)
+
+    station = _station(raw)
+    pickup = is_pickup(
+        station is not None,
+        status,
+        (_lookup(event.get("actionCode")) for event in events),
+    )
 
     return {
         "carrier": "Ecoscooting",
@@ -423,8 +534,8 @@ def normalize_parcel(raw: dict, *, include_history: bool = False) -> dict:
         "delivered_at": delivered_at,
         "planned_from": planned_from,
         "planned_to": planned_to,
-        "pickup": status is ParcelStatus.AT_PICKUP_POINT,
-        "pickup_point": _pickup_point(raw),
+        "pickup": pickup,
+        "pickup_point": _pickup_point(station) if pickup and station else None,
         "url": tracking_url(tracking_code),
         "weight": _weight_kg(raw),
         "dimensions": None,

@@ -6,7 +6,9 @@ rewrite per carrier) can be tested as plain functions.
 """
 
 from datetime import UTC, datetime, timedelta
+from zoneinfo import ZoneInfo
 
+from homeassistant.util import dt as dt_util
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -365,13 +367,18 @@ def test_a_departure_scan_without_an_instant_reports_no_window():
     assert parcel["planned_to"] is None
 
 
-def test_an_unusable_offset_leaves_the_window_open():
-    """A day boundary without a trustworthy offset would span the wrong day."""
+def test_an_unusable_offset_ends_the_day_in_the_home_assistant_zone():
+    """Without a courier offset the day boundary is Home Assistant's."""
     sample = active_sample()
     sample["statuses"][0]["timezone"] = "somewhere"
-    parcel = normalize_parcel(sample)
+    previous = dt_util.get_default_time_zone()
+    dt_util.set_default_time_zone(ZoneInfo("Europe/Madrid"))
+    try:
+        parcel = normalize_parcel(sample)
+    finally:
+        dt_util.set_default_time_zone(previous)
     assert parcel["planned_from"] == "2026-09-28T07:35:27+00:00"
-    assert parcel["planned_to"] is None
+    assert parcel["planned_to"] == "2026-09-28T23:59:59+02:00"
 
 
 def test_planned_from_takes_the_newest_out_for_delivery_scan():
@@ -467,18 +474,15 @@ def test_normalize_pickup_parcel():
     parcel = normalize_parcel(pickup_sample())
     assert parcel["status"] == ParcelStatus.AT_PICKUP_POINT
     assert parcel["pickup"] is True
-    # Shop name and address, with the carrier's own ``NaN`` filler dropped.
-    assert parcel["pickup_point"] == (
-        "Example Parcelshop, Example Street, 1, Example Town"
-    )
+    assert parcel["pickup_point"] == "Example Parcelshop"
 
 
 def test_normalize_keeps_the_pickup_point_after_collection():
     """A collected parcel still shows where it was collected."""
     parcel = normalize_parcel(collected_sample())
     assert parcel["status"] == ParcelStatus.DELIVERED
-    assert parcel["pickup"] is False
-    assert parcel["pickup_point"] is not None
+    assert parcel["pickup"] is True
+    assert parcel["pickup_point"] == "Example Parcelshop"
 
 
 def test_normalize_never_surfaces_the_pickup_points_pin_or_phone():
@@ -486,6 +490,28 @@ def test_normalize_never_surfaces_the_pickup_points_pin_or_phone():
     station = parcel["raw"]["popStationParam"]
     assert station["pinCode"] not in parcel["pickup_point"]
     assert station["phone"] not in parcel["pickup_point"]
+
+
+def test_normalize_never_surfaces_the_pickup_points_address():
+    parcel = normalize_parcel(pickup_sample())
+    assert "Example Street" not in parcel["pickup_point"]
+
+
+def test_normalize_an_unnamed_station_still_marks_the_route_as_pickup():
+    raw = pickup_sample()
+    raw["popStationParam"] = {"stationName": "NaN", "detailAddress": "Example Street"}
+    parcel = normalize_parcel(raw)
+    assert parcel["pickup"] is True
+    assert parcel["pickup_point"] is None
+
+
+def test_normalize_a_station_block_before_arrival_is_en_route():
+    raw = active_sample()
+    raw["popStationParam"] = {"stationName": "Example Parcelshop"}
+    parcel = normalize_parcel(raw)
+    assert parcel["status"] == ParcelStatus.OUT_FOR_DELIVERY
+    assert parcel["pickup"] is True
+    assert parcel["pickup_point"] == "Example Parcelshop"
 
 
 def test_normalize_warns_once_on_an_unreadable_pickup_point(caplog):

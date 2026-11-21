@@ -35,17 +35,16 @@ you act in one of these areas:
   summary+diagnostic sensors. Add a new non-parcel sensor's unique_id to the set.
 - **Per-parcel sensors are removed by the summary sensor** via
   `entity_registry.async_remove` (self-removal races and leaves ghosts).
-- **The optional pickup-point summaries are a pair.** A carrier that can tell
-  a parcel is destined for a pickup point exposes
-  `en_route_to_pickup_point` for `pickup is true` before it arrives; one that
-  can reach `ParcelStatus.AT_PICKUP_POINT` also exposes `awaiting_pickup`.
-  See *Parcel contract* in `CONVENTIONS.md`. Say "pickup point", not
-  "ServicePoint"/"parcel shop"/"locker", for the generic concept; the
-  example carrier demonstrates both canonical sensors. **This carrier ships
-  only `awaiting_pickup`:** it learns a parcel is going to a pickup point no
-  earlier than its arrival there, so `pickup` is never true before
-  `at_pickup_point` and `en_route_to_pickup_point` could only ever read zero.
-  Do not restore it from the template.
+- **The pickup-point summaries are a pair.** A carrier that can deliver to a
+  pickup point exposes both `en_route_to_pickup_point` and `awaiting_pickup`,
+  also before a real parcel has shown the flag (the sensor reads 0 until
+  then). See *Parcel contract* in `CONVENTIONS.md`. Say "pickup point", not
+  "ServicePoint"/"parcel shop"/"locker", for the generic concept.
+  **Unconfirmed here:** every real pickup parcel seen so far carried
+  `popStationParam` only from its arrival at the point, so
+  `en_route_to_pickup_point` has not been seen non-zero. `pickup` is true from
+  the first reply that carries the block, so the sensor fills as soon as the
+  gateway sends it earlier.
 
 ## Carrier-specific notes
 
@@ -93,10 +92,10 @@ the newest one, so a second delivery day does not report the first day's.
 `planned_from` is its instant and `planned_to` the end of its own local day,
 read from that one event's offset rather than from the parcel: the offset
 varies per event, but on the event that opens the window it is the courier's
-own clock. Without a usable offset `planned_to` is left empty rather than
-spanning the wrong day. The derivation is scoped to that one status, so a
-delivered or returning parcel reports no ETA even though the scan is still in
-its history. A whole-day end is also what keeps the parcel on the calendar
+own clock. Without a usable offset the end of the day is taken in Home
+Assistant's zone. The derivation is scoped to that one status, so a delivered,
+returning or at-the-point parcel reports no ETA even though the scan is still
+in its history. A whole-day end is also what keeps the parcel on the calendar
 for the rest of the delivery day — a from-only window would drop off it an
 hour after the van left.
 
@@ -104,10 +103,14 @@ hour after the van left.
 has no such fields. Weight is grams; a unit other than grams warns once and
 publishes nothing rather than a number off by a factor of a thousand.
 
-**The pickup point is kept after collection** so a collected parcel still
-shows where it was collected. Its PIN, phone number and opening hours are
-never read: the PIN is a collection credential. Address parts the carrier has
-no value for arrive spelled `NaN` and are left out.
+**`pickup` follows the route, not the status.** It is true when the reply
+carries a `popStationParam` block or any event reached the pickup point, and
+it stays true after collection, so a collected parcel still shows where it was
+collected. `pickup_point` is the shop name only, filled whenever `pickup` is
+and the block names the shop. The address, PIN, phone number and opening hours
+are never read: the PIN is a collection credential. A name spelled `NaN` means
+the carrier has none. A returning parcel is never `delivered`: no event says it
+is back at the sender, so `delivered` is `status is delivered` alone.
 
 **Diagnostics redact more than usual.** A reference embeds the destination
 postcode, and the delivery event carries the coordinates of the door and a
