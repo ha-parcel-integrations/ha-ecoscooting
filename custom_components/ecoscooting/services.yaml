@@ -5,11 +5,29 @@ track_parcel:
       example: "CNPRT12345678901234567890"
       selector:
         text:
+    contents:
+      required: false
+      example: "Running shoes"
+      selector:
+        text:
 
 untrack_parcel:
   fields:
     tracking_code:
       required: true
       example: "CNPRT12345678901234567890"
+      selector:
+        text:
+
+update_contents:
+  fields:
+    tracking_code:
+      required: true
+      example: "CNPRT12345678901234567890"
+      selector:
+        text:
+    contents:
+      required: false
+      example: "Running shoes"
       selector:
         text:

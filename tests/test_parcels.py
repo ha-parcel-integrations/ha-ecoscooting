@@ -267,6 +267,7 @@ CANONICAL_KEYS = [
     "barcode",
     "sender",
     "receiver",
+    "contents",
     "status",
     "raw_status",
     "delivered",
@@ -325,6 +326,7 @@ def test_fields_the_gateway_does_not_carry_stay_none():
     parcel = normalize_parcel(active_sample())
     assert parcel["sender"] is None
     assert parcel["receiver"] is None
+    assert parcel["contents"] is None
     assert parcel["dimensions"] is None
 
 

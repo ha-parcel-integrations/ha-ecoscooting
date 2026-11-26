@@ -20,6 +20,7 @@ TO_REDACT = {
     "barcode",
     "sender",
     "receiver",
+    "contents",
     "url",
     "pickup_point",
     "delivered_at",

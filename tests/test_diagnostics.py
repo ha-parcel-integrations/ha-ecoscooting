@@ -22,7 +22,9 @@ def _entry(parcels: list[dict]) -> MagicMock:
 
 async def test_diagnostics_redacts_and_counts(hass):
     """Diagnostics get pasted into public issues — nothing identifying may survive."""
-    entry = _entry([normalize_parcel(delivered_sample(), include_history=True)])
+    parcel = normalize_parcel(delivered_sample(), include_history=True)
+    parcel["contents"] = "Running shoes"
+    entry = _entry([parcel])
 
     result = await async_get_config_entry_diagnostics(hass, entry)
 
@@ -41,6 +43,7 @@ async def test_diagnostics_redacts_and_counts(hass):
     assert result["entry_options"]["parcels"][0]["tracking_code"] == "**REDACTED**"
     assert incoming["barcode"] == "**REDACTED**"
     assert incoming["url"] == "**REDACTED**"
+    assert incoming["contents"] == "**REDACTED**"
     assert incoming["raw"]["packageParam"]["trackingNumber"] == "**REDACTED**"
     # the destination, the routing ids and the delivery's own evidence
     assert incoming["raw"]["packageParam"]["toZipcode"] == "**REDACTED**"
